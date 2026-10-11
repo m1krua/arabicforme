@@ -151,6 +151,39 @@ const arabicKeyboard = [
   'َ', 'ُ', 'ِ', 'ْ', 'ّ', 'ً', 'ٍ', 'ٌ', 'ٰ', 'ٱ', 'ة', 'ى', 'لا', 'ال', 'ٔ', 'ٕ', 'ٓ', 'ٖ',
 ];
 
+const arabicAlphabetGuide = [
+  { letter: 'ا', nameRu: 'Алиф', pronunciation: 'а', transliteration: 'ā' },
+  { letter: 'ب', nameRu: 'Ба', pronunciation: 'б', transliteration: 'b' },
+  { letter: 'ت', nameRu: 'Та', pronunciation: 'т', transliteration: 't' },
+  { letter: 'ث', nameRu: 'Са', pronunciation: 'с', transliteration: 'th' },
+  { letter: 'ج', nameRu: 'Джим', pronunciation: 'дж', transliteration: 'j' },
+  { letter: 'ح', nameRu: 'Ха', pronunciation: 'х', transliteration: 'ḥ' },
+  { letter: 'خ', nameRu: 'Ха', pronunciation: 'х', transliteration: 'kh' },
+  { letter: 'د', nameRu: 'Даль', pronunciation: 'д', transliteration: 'd' },
+  { letter: 'ذ', nameRu: 'Заль', pronunciation: 'з', transliteration: 'dh' },
+  { letter: 'ر', nameRu: 'Ра', pronunciation: 'р', transliteration: 'r' },
+  { letter: 'ز', nameRu: 'Зайн', pronunciation: 'з', transliteration: 'z' },
+  { letter: 'س', nameRu: 'Син', pronunciation: 'с', transliteration: 's' },
+  { letter: 'ش', nameRu: 'Шин', pronunciation: 'ш', transliteration: 'sh' },
+  { letter: 'ص', nameRu: 'Сад', pronunciation: 'с', transliteration: 'ṣ' },
+  { letter: 'ض', nameRu: 'Дад', pronunciation: 'д', transliteration: 'ḍ' },
+  { letter: 'ط', nameRu: 'Та', pronunciation: 'т', transliteration: 'ṭ' },
+  { letter: 'ظ', nameRu: 'За', pronunciation: 'з', transliteration: 'ẓ' },
+  { letter: 'ع', nameRu: 'Айн', pronunciation: 'гортанный звук', transliteration: 'ʿ' },
+  { letter: 'غ', nameRu: 'Гайн', pronunciation: 'г', transliteration: 'gh' },
+  { letter: 'ف', nameRu: 'Фа', pronunciation: 'ф', transliteration: 'f' },
+  { letter: 'ق', nameRu: 'Каф', pronunciation: 'к', transliteration: 'q' },
+  { letter: 'ك', nameRu: 'Кяф', pronunciation: 'к', transliteration: 'k' },
+  { letter: 'ل', nameRu: 'Лям', pronunciation: 'л', transliteration: 'l' },
+  { letter: 'م', nameRu: 'Мим', pronunciation: 'м', transliteration: 'm' },
+  { letter: 'ن', nameRu: 'Нун', pronunciation: 'н', transliteration: 'n' },
+  { letter: 'ه', nameRu: 'Ха', pronunciation: 'х', transliteration: 'h' },
+  { letter: 'و', nameRu: 'Вау', pronunciation: 'в/у/о', transliteration: 'w' },
+  { letter: 'ي', nameRu: 'Я', pronunciation: 'й/и', transliteration: 'y' },
+  { letter: 'ة', nameRu: 'Та марбута', pronunciation: 'т/а', transliteration: 't' },
+  { letter: 'ى', nameRu: 'Алиф максура', pronunciation: 'а/й', transliteration: 'ā/ī' },
+];
+
 const arabicDiacriticsGuide = [
   {
     symbol: 'َ',
@@ -486,26 +519,57 @@ export function HarakatReferencePage() {
       <div className="page-heading">
         <div>
           <span className="eyebrow">Справочник</span>
-          <h1 id="harakat-title">Арабские знаки и огласовки</h1>
-          <p>Набор правил и примеров помогает отличать знаки, влияющие на чтение слова.</p>
+          <h1 id="harakat-title">Арабские знаки, огласовки и алфавит</h1>
+          <p>Набор правил и примеров помогает отличать знаки, влияющие на чтение слова, и быстро вспоминать базовые буквы.</p>
         </div>
       </div>
-      <div className="guide-grid">
-        {arabicDiacriticsGuide.map((entry) => (
-          <article key={`${entry.symbol}-${entry.nameRu}`} className="guide-card panel">
-            <div className="guide-sign" lang="ar" dir="rtl">{entry.symbol}</div>
-            <div className="guide-copy">
-              <span className="eyebrow">{entry.nameRu}</span>
-              <h2>{entry.nameKy}</h2>
-              <p><strong>Произношение:</strong> {entry.pronunciation}</p>
-              <p><strong>Как влияет на чтение:</strong> {entry.effect}</p>
-              <p><strong>Пример:</strong> <span className="arabic-inline" lang="ar" dir="rtl">{entry.example}</span></p>
-              <p><strong>Транскрипция:</strong> {entry.transliteration}</p>
-              <p><strong>Перевод:</strong> {entry.meaning}</p>
-            </div>
-          </article>
-        ))}
-      </div>
+
+      <article className="panel">
+        <div className="panel-heading">
+          <div>
+            <span className="eyebrow">Основы</span>
+            <h2>Арабский алфавит</h2>
+          </div>
+        </div>
+        <div className="guide-grid">
+          {arabicAlphabetGuide.map((entry) => (
+            <article key={`${entry.letter}-${entry.nameRu}`} className="guide-card panel">
+              <div className="guide-sign" lang="ar" dir="rtl">{entry.letter}</div>
+              <div className="guide-copy">
+                <span className="eyebrow">{entry.nameRu}</span>
+                <h2>{entry.letter}</h2>
+                <p><strong>Звук:</strong> {entry.pronunciation}</p>
+                <p><strong>Транскрипция:</strong> {entry.transliteration}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </article>
+
+      <article className="panel">
+        <div className="panel-heading">
+          <div>
+            <span className="eyebrow">Чтение</span>
+            <h2>Знаки и огласовки</h2>
+          </div>
+        </div>
+        <div className="guide-grid">
+          {arabicDiacriticsGuide.map((entry) => (
+            <article key={`${entry.symbol}-${entry.nameRu}`} className="guide-card panel">
+              <div className="guide-sign" lang="ar" dir="rtl">{entry.symbol}</div>
+              <div className="guide-copy">
+                <span className="eyebrow">{entry.nameRu}</span>
+                <h2>{entry.nameKy}</h2>
+                <p><strong>Произношение:</strong> {entry.pronunciation}</p>
+                <p><strong>Как влияет на чтение:</strong> {entry.effect}</p>
+                <p><strong>Пример:</strong> <span className="arabic-inline" lang="ar" dir="rtl">{entry.example}</span></p>
+                <p><strong>Транскрипция:</strong> {entry.transliteration}</p>
+                <p><strong>Перевод:</strong> {entry.meaning}</p>
+              </div>
+            </article>
+          ))}
+        </div>
+      </article>
     </section>
   );
 }

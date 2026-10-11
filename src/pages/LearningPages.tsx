@@ -513,6 +513,120 @@ export function ReviewPage() {
   );
 }
 
+function ArabicAlphabetQuiz() {
+  const quizQuestions = useMemo(() => {
+    const questions = arabicAlphabetGuide.map((entry) => ({
+      answer: entry.nameRu,
+      prompt: entry.letter,
+      options: shuffle([
+        entry.nameRu,
+        ...shuffle(
+          arabicAlphabetGuide
+            .filter((item) => item.nameRu !== entry.nameRu)
+            .map((item) => item.nameRu),
+        ).slice(0, 3),
+      ]),
+    }));
+    return shuffle(questions).slice(0, 8);
+  }, []);
+  const [questionIndex, setQuestionIndex] = useState(0);
+  const [selected, setSelected] = useState<string | null>(null);
+  const [score, setScore] = useState(0);
+
+  const isFinished = questionIndex >= quizQuestions.length;
+  const currentQuestion = quizQuestions[questionIndex]!;
+  if (isFinished) {
+    return (
+      <article className="panel" style={{ padding: '24px' }}>
+        <div className="panel-heading">
+          <div>
+            <span className="eyebrow">Тест</span>
+            <h2>Готово: арабский алфавит</h2>
+          </div>
+        </div>
+        <p style={{ margin: '12px 0 0', color: 'var(--muted)', lineHeight: 1.6 }}>
+          Вы ответили правильно на {score} из {quizQuestions.length} букв.
+        </p>
+      </article>
+    );
+  }
+
+  if (!currentQuestion) {
+    return null;
+  }
+
+  const currentOptions = currentQuestion.options;
+
+  function handleAnswer(option: string) {
+    if (selected !== null) return;
+    setSelected(option);
+    if (option === currentQuestion.answer) {
+      setScore((value) => value + 1);
+    }
+  }
+
+  function handleNext() {
+    if (questionIndex >= quizQuestions.length - 1) {
+      setQuestionIndex(quizQuestions.length);
+      return;
+    }
+    setQuestionIndex((index) => index + 1);
+    setSelected(null);
+  }
+
+  return (
+    <article className="panel" style={{ padding: '24px' }}>
+      <div className="panel-heading">
+        <div>
+          <span className="eyebrow">Проверка</span>
+          <h2>Тест по арабскому алфавиту</h2>
+        </div>
+        <strong style={{ color: 'var(--green-dark)' }}>{score} / {quizQuestions.length}</strong>
+      </div>
+      <div style={{ marginTop: '18px', display: 'grid', gap: '16px' }}>
+        <div className="guide-sign" lang="ar" dir="rtl" style={{ minHeight: '110px', fontSize: '3rem' }}>
+          {currentQuestion.prompt}
+        </div>
+        <div style={{ display: 'grid', gap: '10px' }}>
+          {currentOptions.map((option) => {
+            const isCorrect = option === currentQuestion.answer;
+            const isSelected = option === selected;
+            const revealState = selected !== null && (isCorrect || isSelected);
+            return (
+              <button
+                key={option}
+                type="button"
+                className={`quiz-option${selected !== null && isCorrect ? ' is-correct' : ''}${selected !== null && isSelected && !isCorrect ? ' is-wrong' : ''}`}
+                disabled={selected !== null}
+                onClick={() => handleAnswer(option)}
+                style={{
+                  borderColor: revealState ? (isCorrect ? '#78aa82' : '#d69584') : undefined,
+                  background: revealState ? (isCorrect ? 'var(--green-soft)' : '#fff1ed') : undefined,
+                }}
+              >
+                {option}
+              </button>
+            );
+          })}
+        </div>
+        {selected !== null && (
+          <div className={`answer-feedback ${selected === currentQuestion.answer ? 'feedback-correct' : 'feedback-wrong'}`} role="status">
+            <strong>{selected === currentQuestion.answer ? 'Правильно' : 'Неверно'}</strong>
+            <span>
+              {selected === currentQuestion.answer
+                ? 'Верно. Это буква ' + currentQuestion.answer + '.'
+                : 'Правильный ответ: ' + currentQuestion.answer + '.'}
+            </span>
+            <button className="button button-primary" type="button" onClick={handleNext}>
+              {questionIndex === quizQuestions.length - 1 ? 'Завершить' : 'Следующий вопрос'}
+            </button>
+          </div>
+        )}
+      </div>
+    </article>
+  );
+}
+
 export function HarakatReferencePage() {
   return (
     <section className="page-stack" aria-labelledby="harakat-title">
@@ -545,6 +659,8 @@ export function HarakatReferencePage() {
           ))}
         </div>
       </article>
+
+      <ArabicAlphabetQuiz />
 
       <article className="panel">
         <div className="panel-heading">

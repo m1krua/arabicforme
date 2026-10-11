@@ -142,10 +142,19 @@ export function createQuizRound(
 }
 
 export function normalizeArabicAnswer(value: string): string {
-  return value.normalize('NFC').replace(/[\s\u200e\u200f\u202a-\u202e]/g, '');
+  if (typeof value !== 'string') return '';
+
+  return value
+    .normalize('NFC')
+    .replace(/[\s\u00A0\u061C\u1680\u180E\u2000-\u200F\u202A-\u202F\u205F\u2060-\u206F\uFEFF]/g, '')
+    .replace(/\u0640/g, '');
 }
 
 export function isArabicAnswerCorrect(answer: string, acceptedAnswers: readonly string[]): boolean {
+  if (typeof answer !== 'string' || !Array.isArray(acceptedAnswers) || acceptedAnswers.length === 0) {
+    return false;
+  }
+
   const normalized = normalizeArabicAnswer(answer);
-  return acceptedAnswers.some((accepted) => normalizeArabicAnswer(accepted) === normalized);
+  return acceptedAnswers.some((accepted) => typeof accepted === 'string' && normalizeArabicAnswer(accepted) === normalized);
 }

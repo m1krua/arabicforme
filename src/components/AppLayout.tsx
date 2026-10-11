@@ -23,6 +23,7 @@ const navigation = [
   { to: '/practice', label: 'Тренировка', icon: Brain },
   { to: '/quiz', label: 'Тесты', icon: CircleHelp },
   { to: '/review', label: 'Повторение', icon: RotateCcw },
+  { to: '/harakat', label: 'Справочник', icon: CircleHelp },
   { to: '/progress', label: 'Прогресс', icon: ChartNoAxesCombined },
   { to: '/settings', label: 'Настройки', icon: Settings2 },
 ];

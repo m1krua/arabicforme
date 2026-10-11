@@ -147,8 +147,131 @@ function shuffle<T>(values: readonly T[]): T[] {
 
 const arabicKeyboard = [
   'ا', 'ب', 'ت', 'ث', 'ج', 'ح', 'خ', 'د', 'ذ', 'ر', 'ز', 'س', 'ش', 'ص', 'ض',
-  'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'ه', 'و', 'ي', 'ء',
-  'َ', 'ُ', 'ِ', 'ْ', 'ّ', 'ٰ',
+  'ط', 'ظ', 'ع', 'غ', 'ف', 'ق', 'ك', 'ل', 'م', 'ن', 'ه', 'و', 'ي', 'ء', 'ؤ', 'ئ', 'آ',
+  'َ', 'ُ', 'ِ', 'ْ', 'ّ', 'ً', 'ٍ', 'ٌ', 'ٰ', 'ٱ', 'ة', 'ى', 'لا', 'ال', 'ٔ', 'ٕ', 'ٓ', 'ٖ',
+];
+
+const arabicDiacriticsGuide = [
+  {
+    symbol: 'َ',
+    nameRu: 'Фатха',
+    nameKy: 'фатха',
+    pronunciation: 'а',
+    effect: 'Короткий гласный a после согласной буквы.',
+    example: 'بَابٌ',
+    transliteration: 'bābun',
+    meaning: 'дверь',
+  },
+  {
+    symbol: 'ِ',
+    nameRu: 'Касра',
+    nameKy: 'касра',
+    pronunciation: 'и',
+    effect: 'Короткий гласный i при чтении слова.',
+    example: 'بِتٍّ',
+    transliteration: 'bittin',
+    meaning: 'дом',
+  },
+  {
+    symbol: 'ُ',
+    nameRu: 'Дамма',
+    nameKy: 'дамма',
+    pronunciation: 'у',
+    effect: 'Короткий гласный u после согласной буквы.',
+    example: 'مُسْلِمٌ',
+    transliteration: 'muslimun',
+    meaning: 'мусульманин',
+  },
+  {
+    symbol: 'ْ',
+    nameRu: 'Сукун',
+    nameKy: 'сукун',
+    pronunciation: 'без гласного',
+    effect: 'Согласная читается без краткого звука перед следующей буквой.',
+    example: 'قَلْبٌ',
+    transliteration: 'qalbun',
+    meaning: 'сердце',
+  },
+  {
+    symbol: 'ّ',
+    nameRu: 'Шадда',
+    nameKy: 'шадда',
+    pronunciation: 'удвоение согласного',
+    effect: 'Удваивает звук буквы и требует его более сильного произнесения.',
+    example: 'رَتَّبَ',
+    transliteration: 'rattaba',
+    meaning: 'расположил по порядку',
+  },
+  {
+    symbol: 'ً',
+    nameRu: 'Фатхатайн',
+    nameKy: 'фатхатайн',
+    pronunciation: 'ан',
+    effect: 'Окончание в форме tanwin с a-образным звуком.',
+    example: 'كِتَابً',
+    transliteration: 'kitāban',
+    meaning: 'книгу',
+  },
+  {
+    symbol: 'ٍ',
+    nameRu: 'Касратайн',
+    nameKy: 'касратайн',
+    pronunciation: 'ин',
+    effect: 'Окончание с i-образным звуком в конце слова.',
+    example: 'حَقٍّ',
+    transliteration: 'haqqin',
+    meaning: 'истинного',
+  },
+  {
+    symbol: 'ٌ',
+    nameRu: 'Дамматайн',
+    nameKy: 'дамматайн',
+    pronunciation: 'ун',
+    effect: 'Окончание с u-образным звуком в форме tanwin.',
+    example: 'عَلَمٌ',
+    transliteration: 'alamun',
+    meaning: 'знак',
+  },
+  {
+    symbol: 'ء',
+    nameRu: 'Хамза',
+    nameKy: 'хамза',
+    pronunciation: 'гортанный взрывной звук',
+    effect: 'Определяет особое написание и произношение в словах с начальной или внутренней хамзой.',
+    example: 'أَمْرٌ',
+    transliteration: 'amrun',
+    meaning: 'дело',
+  },
+  {
+    symbol: 'ة',
+    nameRu: 'Та марбута',
+    nameKy: 'та марбута',
+    pronunciation: 'т',
+    effect: 'В конце слова обычно читается как t, особенно в именах и формировании женского рода.',
+    example: 'مَدْرَسَةٌ',
+    transliteration: 'madrasatun',
+    meaning: 'школа',
+  },
+  {
+    symbol: 'ى',
+    nameRu: 'Алиф максура',
+    nameKy: 'алиф максура',
+    pronunciation: 'а или й',
+    effect: 'В конце слова буква читается как долгий a/й в зависимости от формы.',
+    example: 'مَسْلَى',
+    transliteration: 'maslā',
+    meaning: 'цель',
+  },
+  {
+    symbol: 'لا',
+    nameRu: 'Лям-алиф',
+    nameKy: 'лям-алиф',
+    pronunciation: 'ла',
+    effect: 'Лигатурное сочетание лям + алиф, часто встречается в словах и именах.',
+    example: 'لا',
+    transliteration: 'lā',
+    meaning: 'нет',
+  },
 ];
 
 function WordCard({ word, onRate }: { word: VerifiedWord; onRate: () => void }) {
@@ -353,6 +476,36 @@ export function ReviewPage() {
           )}
         </div>
       )}
+    </section>
+  );
+}
+
+export function HarakatReferencePage() {
+  return (
+    <section className="page-stack" aria-labelledby="harakat-title">
+      <div className="page-heading">
+        <div>
+          <span className="eyebrow">Справочник</span>
+          <h1 id="harakat-title">Арабские знаки и огласовки</h1>
+          <p>Набор правил и примеров помогает отличать знаки, влияющие на чтение слова.</p>
+        </div>
+      </div>
+      <div className="guide-grid">
+        {arabicDiacriticsGuide.map((entry) => (
+          <article key={`${entry.symbol}-${entry.nameRu}`} className="guide-card panel">
+            <div className="guide-sign" lang="ar" dir="rtl">{entry.symbol}</div>
+            <div className="guide-copy">
+              <span className="eyebrow">{entry.nameRu}</span>
+              <h2>{entry.nameKy}</h2>
+              <p><strong>Произношение:</strong> {entry.pronunciation}</p>
+              <p><strong>Как влияет на чтение:</strong> {entry.effect}</p>
+              <p><strong>Пример:</strong> <span className="arabic-inline" lang="ar" dir="rtl">{entry.example}</span></p>
+              <p><strong>Транскрипция:</strong> {entry.transliteration}</p>
+              <p><strong>Перевод:</strong> {entry.meaning}</p>
+            </div>
+          </article>
+        ))}
+      </div>
     </section>
   );
 }
@@ -606,7 +759,16 @@ export function QuizSessionPage() {
         {answer !== null && (
           <div className={`answer-feedback ${answerIsCorrect ? 'feedback-correct' : 'feedback-wrong'}`} role="status">
             <strong>{answerIsCorrect ? 'Правильно' : 'Неверно'}</strong>
-            <span>{answerIsCorrect ? question.explanation : `Правильный ответ: ${translatedAnswer}. ${question.explanation ?? ''}`}</span>
+            {answerIsCorrect ? (
+              <span>{question.explanation ?? 'Вы ответили верно.'}</span>
+            ) : (
+              <div className="answer-details">
+                <p><strong>Ваш ответ:</strong> <span className="answer-value">{answer}</span></p>
+                <p><strong>Правильный ответ:</strong> <span className="answer-value answer-value-arabic" lang="ar" dir="rtl">{translatedAnswer}</span></p>
+                <p><strong>Перевод:</strong> <span className="answer-value">{localizeTranslation(question.answer, progress.translationLanguage)}</span></p>
+                {question.explanation && <p><strong>Объяснение:</strong> <span className="answer-value">{question.explanation}</span></p>}
+              </div>
+            )}
             <button className="button button-primary" type="button" onClick={() => {
               if (questionIndex + 1 >= questions.length) finishQuiz(score);
               else {

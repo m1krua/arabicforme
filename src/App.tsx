@@ -4,6 +4,7 @@ import { AppLayout } from './components/AppLayout';
 import { Dashboard } from './pages/Dashboard';
 import {
   FlashcardsPage,
+  HarakatReferencePage,
   LessonDetailPage,
   LessonsPage,
   PracticePage,
@@ -52,6 +53,7 @@ export function App() {
           <Route path="quiz" element={<QuizSetupPage />} />
           <Route path="quiz/session" element={<QuizSessionPage />} />
           <Route path="review" element={<ReviewPage />} />
+          <Route path="harakat" element={<HarakatReferencePage />} />
           <Route path="progress" element={<ProgressPage />} />
           <Route path="settings" element={<SettingsPage />} />
           <Route path="*" element={<NotFoundPage />} />

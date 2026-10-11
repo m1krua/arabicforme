@@ -43,7 +43,29 @@ describe('source-aware course data', () => {
       ['lesson-22', 46],
     ]);
     expect(courseCatalog.words).toHaveLength(426);
-    expect(courseCatalog.questions).toHaveLength(102);
+    expect(courseCatalog.questions.length).toBeGreaterThanOrEqual(courseCatalog.words.length * 2);
+    for (const word of courseCatalog.words) {
+      expect(courseCatalog.questions.some((question) =>
+        question.wordId === word.id &&
+        question.type === 'choice' &&
+        question.prompt === word.arabic &&
+        question.answer === word.translation,
+      ), `${word.id} translation question`).toBe(true);
+      expect(courseCatalog.questions.some((question) =>
+        question.wordId === word.id &&
+        question.type === 'text' &&
+        question.prompt === word.translation &&
+        question.answer === word.arabic,
+      ), `${word.id} writing question`).toBe(true);
+    }
+    for (const lesson of courseCatalog.lessons) {
+      const lessonWordCount = courseCatalog.words.filter((word) => word.lessonId === lesson.id).length;
+      if (lessonWordCount < 10) continue;
+      expect(
+        courseCatalog.questions.filter((question) => question.lessonId === lesson.id).length,
+        lesson.id,
+      ).toBeGreaterThanOrEqual(20);
+    }
     expect(courseCatalog.words.every((word) => word.verified && [2, 3, 4, 5, 6, 9, 11, 13, 16, 19, 20, 24, 26, 28, 30, 33, 35, 38, 40, 41, 43, 46].includes(word.sourcePage))).toBe(true);
     expect(courseCatalog.questions.every((question) => question.verified && [2, 3, 4, 5, 6, 9, 11, 13, 16, 19, 20, 24, 26, 28, 30, 33, 35, 38, 40, 41, 43, 46].includes(question.sourcePage))).toBe(true);
   });
@@ -51,10 +73,9 @@ describe('source-aware course data', () => {
   it('covers every course translation in Kyrgyz and keeps localized quiz choices distinct', () => {
     const translations = [
       ...courseCatalog.words.map((word) => word.translation),
-      ...courseCatalog.questions.flatMap((question) => [
-        question.answer,
-        ...(question.choices ?? []),
-      ]),
+      ...courseCatalog.questions
+        .filter((question) => question.type === 'choice')
+        .flatMap((question) => [question.answer, ...(question.choices ?? [])]),
     ];
     const missing = [...new Set(translations.filter((translation) => !hasKyrgyzTranslation(translation)))];
     expect(missing).toEqual([]);

@@ -1,4 +1,6 @@
 import { parseCourseCatalog } from '../lib/course';
+import type { QuizQuestion, VerifiedWord } from '../types/course';
+import { localizeTranslation } from './kyrgyz';
 
 const sourceData: unknown = {
   lessons: [
@@ -705,4 +707,71 @@ const sourceData: unknown = {
   ],
 };
 
-export const courseCatalog = parseCourseCatalog(sourceData);
+function createVocabularyQuestions(
+  words: readonly VerifiedWord[],
+  existingQuestions: readonly QuizQuestion[],
+): QuizQuestion[] {
+  return words.flatMap((word) => {
+    const questions: QuizQuestion[] = [{
+      id: `${word.id}-q-writing`,
+      lessonId: word.lessonId,
+      wordId: word.id,
+      type: 'text',
+      prompt: word.translation,
+      answer: word.arabic,
+      explanation: `Напишите по-арабски слово со страницы ${word.sourcePage} книги.`,
+      sourcePage: word.sourcePage,
+      verified: true,
+    }];
+
+    if (existingQuestions.some((question) => question.wordId === word.id && question.type === 'choice')) {
+      return questions;
+    }
+
+    const correctKyrgyz = localizeTranslation(word.translation, 'ky');
+    const distractors: string[] = [];
+    const usedTranslations = new Set([word.translation]);
+    const usedKyrgyzTranslations = new Set([correctKyrgyz]);
+    const candidates = [
+      ...words.filter((candidate) => candidate.lessonId === word.lessonId),
+      ...words.filter((candidate) => candidate.lessonId !== word.lessonId),
+    ];
+
+    for (const candidate of candidates) {
+      const translation = candidate.translation;
+      const kyrgyzTranslation = localizeTranslation(translation, 'ky');
+      if (usedTranslations.has(translation) || usedKyrgyzTranslations.has(kyrgyzTranslation)) continue;
+
+      distractors.push(translation);
+      usedTranslations.add(translation);
+      usedKyrgyzTranslations.add(kyrgyzTranslation);
+      if (distractors.length === 3) break;
+    }
+
+    if (distractors.length > 0) {
+      questions.push({
+        id: `${word.id}-q-meaning`,
+        lessonId: word.lessonId,
+        wordId: word.id,
+        type: 'choice',
+        prompt: word.arabic,
+        choices: [word.translation, ...distractors],
+        answer: word.translation,
+        explanation: `Сверьте слово и перевод на странице ${word.sourcePage} книги.`,
+        sourcePage: word.sourcePage,
+        verified: true,
+      });
+    }
+
+    return questions;
+  });
+}
+
+const verifiedCourse = parseCourseCatalog(sourceData);
+export const courseCatalog = parseCourseCatalog({
+  ...verifiedCourse,
+  questions: [
+    ...verifiedCourse.questions,
+    ...createVocabularyQuestions(verifiedCourse.words, verifiedCourse.questions),
+  ],
+});

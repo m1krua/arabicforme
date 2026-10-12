@@ -17,6 +17,7 @@ import {
 } from 'pdfjs-dist';
 import pdfWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { useProgress } from '../state/useProgress';
+import { useInterfaceText } from '../state/useInterfaceText';
 
 GlobalWorkerOptions.workerSrc = pdfWorkerUrl;
 
@@ -24,6 +25,8 @@ export function PdfReader() {
   const { page: pagePath } = useParams();
   const navigate = useNavigate();
   const { progress, updateProgress, recordActivity } = useProgress();
+  const t = useInterfaceText();
+  const locale = progress.translationLanguage === 'ky' ? 'ky' : 'ru';
   const fileInputRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pageContainerRef = useRef<HTMLDivElement>(null);
@@ -81,14 +84,14 @@ export function PdfReader() {
       canvas.style.height = `${Math.ceil(displayViewport.height)}px`;
       const context = canvas.getContext('2d');
       if (context === null) {
-        setRenderError('Браузер не смог создать холст для отображения страницы.');
+        setRenderError(t('Браузер не смог создать холст для отображения страницы.'));
         return;
       }
       renderTask = page.render({ canvas, canvasContext: context, viewport });
       return renderTask.promise;
     }).catch((cause: unknown) => {
       if (!cancelled && !(cause instanceof Error && cause.name === 'RenderingCancelledException')) {
-        setRenderError(cause instanceof Error ? cause.message : 'Не удалось отобразить страницу PDF.');
+        setRenderError(cause instanceof Error ? cause.message : t('Не удалось отобразить страницу PDF.'));
       }
     });
 
@@ -96,7 +99,7 @@ export function PdfReader() {
       cancelled = true;
       renderTask?.cancel();
     };
-  }, [containerWidth, fitToWidth, pageNumber, pdf, zoom]);
+  }, [containerWidth, fitToWidth, pageNumber, pdf, t, zoom]);
 
   useEffect(() => {
     return () => {
@@ -120,7 +123,7 @@ export function PdfReader() {
     event.currentTarget.value = '';
     if (!file) return;
     if (file.type !== 'application/pdf' && !file.name.toLocaleLowerCase().endsWith('.pdf')) {
-      setError('Выберите файл PDF.');
+      setError(t('Выберите файл PDF.'));
       return;
     }
 
@@ -150,8 +153,8 @@ export function PdfReader() {
       navigate(`/book/${initialPage}`, { replace: true });
     } catch (cause) {
       if (request === loadSequenceRef.current) {
-        const message = cause instanceof Error ? cause.message : 'Не удалось открыть этот PDF.';
-        setError(`Не удалось открыть PDF. Проверьте, что файл не повреждён. ${message}`);
+        const message = cause instanceof Error ? cause.message : t('Не удалось открыть этот PDF.');
+        setError(`${t('Не удалось открыть PDF. Проверьте, что файл не повреждён.')} ${message}`);
       }
     } finally {
       if (request === loadSequenceRef.current) setLoading(false);
@@ -177,7 +180,7 @@ export function PdfReader() {
         await container.requestFullscreen();
       }
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : 'Не удалось включить полноэкранный режим.');
+      setError(cause instanceof Error ? cause.message : t('Не удалось включить полноэкранный режим.'));
     }
   }
 
@@ -185,19 +188,19 @@ export function PdfReader() {
     <section className="page-stack" aria-labelledby="book-heading">
       <div className="page-heading">
         <div>
-          <span className="eyebrow">Оригинальный источник</span>
-          <h1 id="book-heading">Онлайн-книга</h1>
-          <p>Откройте PDF с устройства. Файл не отправляется на сервер; после перезагрузки выберите его снова.</p>
+          <span className="eyebrow">{t('Оригинальный источник')}</span>
+          <h1 id="book-heading">{t('Онлайн-книга')}</h1>
+          <p>{t('Откройте PDF с устройства. Файл не отправляется на сервер; после перезагрузки выберите его снова.')}</p>
         </div>
         <label className="button button-primary upload-button">
           <Upload size={18} aria-hidden="true" />
-          <span>{pdf ? 'Выбрать другой PDF' : 'Открыть PDF'}</span>
+          <span>{t(pdf ? 'Выбрать другой PDF' : 'Открыть PDF')}</span>
           <input
             ref={fileInputRef}
             type="file"
             accept="application/pdf,.pdf"
             onChange={openSelectedFile}
-            aria-label="Выбрать PDF-файл"
+            aria-label={t('Выбрать PDF-файл')}
           />
         </label>
       </div>
@@ -208,7 +211,7 @@ export function PdfReader() {
         <div className="reader-toolbar">
           <div className="reader-file" title={fileName}>
             <span className="status-dot" aria-hidden="true" />
-            <span>{fileName || 'PDF не выбран'}</span>
+            <span>{fileName || t('PDF не выбран')}</span>
           </div>
           <div className="reader-actions">
             <button
@@ -216,19 +219,19 @@ export function PdfReader() {
               type="button"
               onClick={() => setZoom((current) => Math.max(0.5, Math.round((current - 0.1) * 10) / 10))}
               disabled={!pdf || fitToWidth}
-              aria-label="Уменьшить масштаб"
-              title="Уменьшить масштаб"
+              aria-label={t('Уменьшить масштаб')}
+              title={t('Уменьшить масштаб')}
             >
               <Minus size={18} />
             </button>
-            <span className="zoom-value">{fitToWidth ? 'Авто' : `${Math.round(zoom * 100)}%`}</span>
+            <span className="zoom-value">{fitToWidth ? t('Авто') : `${Math.round(zoom * 100)}%`}</span>
             <button
               className="icon-button"
               type="button"
               onClick={() => setZoom((current) => Math.min(2.5, Math.round((current + 0.1) * 10) / 10))}
               disabled={!pdf || fitToWidth}
-              aria-label="Увеличить масштаб"
-              title="Увеличить масштаб"
+              aria-label={t('Увеличить масштаб')}
+              title={t('Увеличить масштаб')}
             >
               <Plus size={18} />
             </button>
@@ -238,17 +241,17 @@ export function PdfReader() {
               onClick={() => setFitToWidth((current) => !current)}
               disabled={!pdf}
               aria-pressed={fitToWidth}
-              title="Подогнать по ширине"
+              title={t('Подогнать по ширине')}
             >
-              <span className="fit-label">По ширине</span>
+              <span className="fit-label">{t('По ширине')}</span>
             </button>
             <button
               className="icon-button"
               type="button"
               onClick={toggleFullscreen}
               disabled={!pdf}
-              aria-label="Полноэкранный режим"
-              title="Полноэкранный режим"
+              aria-label={t('Полноэкранный режим')}
+              title={t('Полноэкранный режим')}
             >
               <Expand size={18} />
             </button>
@@ -259,31 +262,28 @@ export function PdfReader() {
           {loading ? (
             <div className="reader-empty" role="status">
               <span className="spinner" />
-              <p>Открываем PDF и подготавливаем страницы…</p>
-              <span>Большой файл может загружаться некоторое время.</span>
+              <p>{t('Открываем PDF и подготавливаем страницы…')}</p>
+              <span>{t('Большой файл может загружаться некоторое время.')}</span>
             </div>
           ) : pdf ? (
             <>
               {renderError && <div className="notice notice-error" role="alert">{renderError}</div>}
-              <canvas ref={canvasRef} aria-label={`Страница ${pageNumber} книги`} />
+              <canvas ref={canvasRef} aria-label={`${t('Страница книги')} ${pageNumber}`} />
             </>
           ) : (
             <div className="reader-empty">
               <div className="empty-book-icon"><Upload size={28} /></div>
-              <h2>Книга ещё не открыта</h2>
-              <p>
-                Выберите исходный PDF с устройства. Приложение загрузит и отрисует только
-                текущую страницу.
-              </p>
+              <h2>{t('Книга ещё не открыта')}</h2>
+              <p>{t('Выберите исходный PDF с устройства. Приложение загрузит и отрисует только текущую страницу.')}</p>
               <button
                 className="button button-primary"
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
               >
-                Открыть PDF
+                {t('Открыть PDF')}
               </button>
               {progress.lastReadPage > 1 && (
-                <span>Последнее чтение сохранено: страница {progress.lastReadPage}.</span>
+                <span>{t('Последнее чтение сохранено: страница')} {progress.lastReadPage}.</span>
               )}
             </div>
           )}
@@ -296,15 +296,15 @@ export function PdfReader() {
               type="button"
               onClick={() => goToPage(pageNumber - 1)}
               disabled={!pdf || pageNumber <= 1}
-              aria-label="Предыдущая страница"
+              aria-label={t('Предыдущая страница')}
             >
               <ChevronLeft size={18} />
-              <span>Назад</span>
+              <span>{t('Назад')}</span>
             </button>
             <label className="page-input-label">
-              <span className="sr-only">Номер страницы</span>
+              <span className="sr-only">{t('Номер страницы')}</span>
               <input
-                aria-label="Номер страницы"
+                aria-label={t('Номер страницы')}
                 type="number"
                 min={1}
                 max={pdf?.numPages ?? undefined}
@@ -318,15 +318,15 @@ export function PdfReader() {
                 }}
               />
             </label>
-            <span className="page-count">из {pdf?.numPages ?? '—'}</span>
+            <span className="page-count">{locale === 'ky' ? '/' : 'из'} {pdf?.numPages ?? '—'}</span>
             <button
               className="button button-quiet"
               type="button"
               onClick={() => goToPage(pageNumber + 1)}
               disabled={!pdf || pageNumber >= pdf.numPages}
-              aria-label="Следующая страница"
+              aria-label={t('Следующая страница')}
             >
-              <span>Далее</span>
+              <span>{t('Далее')}</span>
               <ChevronRight size={18} />
             </button>
           </div>
@@ -340,10 +340,10 @@ export function PdfReader() {
               aria-pressed={progress.bookmarks.includes(pageNumber)}
             >
               <Bookmark size={17} aria-hidden="true" />
-              <span>{progress.bookmarks.includes(pageNumber) ? 'Убрать закладку' : 'Добавить закладку'}</span>
+              <span>{t(progress.bookmarks.includes(pageNumber) ? 'Убрать закладку' : 'Добавить закладку')}</span>
             </button>
             {progress.bookmarks.length > 0 && (
-              <div className="bookmark-list" aria-label="Закладки">
+              <div className="bookmark-list" aria-label={t('Закладки')}>
                 {progress.bookmarks.map((page) => (
                   <button
                     className={`bookmark-chip ${page === pageNumber ? 'is-current' : ''}`}
@@ -351,7 +351,7 @@ export function PdfReader() {
                     type="button"
                     disabled={!pdf}
                     onClick={() => goToPage(page)}
-                    aria-label={`Открыть страницу ${page}`}
+                    aria-label={`${t('Открыть страницу')} ${page}`}
                   >
                     {page}
                   </button>

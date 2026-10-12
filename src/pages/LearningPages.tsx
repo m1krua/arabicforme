@@ -14,27 +14,41 @@ import {
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { courseCatalog } from '../data/course';
 import { localizeTranslation } from '../data/kyrgyz';
-import { createQuizRound, isArabicAnswerCorrect } from '../lib/course';
+import { formatInterfaceDate } from '../data/interface';
+import { createQuizRound, isArabicAnswerCorrect, normalizeArabicAnswer, transliterateArabic } from '../lib/course';
 import { addActiveDate, type QuizAttempt } from '../lib/progress';
 import { useProgress } from '../state/useProgress';
+import { useInterfaceText } from '../state/useInterfaceText';
 import type { Lesson, VerifiedWord } from '../types/course';
 
+function createQuizAttemptId(): string {
+  try {
+    if (typeof globalThis.crypto?.randomUUID === 'function') {
+      return globalThis.crypto.randomUUID();
+    }
+  } catch (error) {
+    if (import.meta.env.DEV) console.warn('UUID API недоступен; используется совместимый идентификатор теста.', error);
+  }
+  return `quiz-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 function SourceNote() {
+  const t = useInterfaceText();
   return (
     <div className="notice notice-info">
-      Материал включается в обучение только после сверки написания, огласовок, перевода и
-      страницы-источника. Книга пока доступна в оригинале.
-      <Link to="/book">Открыть книгу <ArrowRight size={15} /></Link>
+      {t('Материал включается в обучение только после сверки написания, огласовок, перевода и страницы-источника. Книга пока доступна в оригинале.')}
+      <Link to="/book">{t('Открыть книгу')} <ArrowRight size={15} /></Link>
     </div>
   );
 }
 
 function EmptyCourse({ title, description }: { title: string; description: string }) {
+  const t = useInterfaceText();
   return (
     <div className="empty-course">
       <span className="empty-course-icon"><BookOpen size={23} aria-hidden="true" /></span>
-      <h2>{title}</h2>
-      <p>{description}</p>
+      <h2>{t(title)}</h2>
+      <p>{t(description)}</p>
       <SourceNote />
     </div>
   );
@@ -42,28 +56,30 @@ function EmptyCourse({ title, description }: { title: string; description: strin
 
 function LessonCard({ lesson }: { lesson: Lesson }) {
   const { progress } = useProgress();
+  const t = useInterfaceText();
   const completed = progress.completedLessonIds.includes(lesson.id);
   return (
     <article className="lesson-card">
       <div className="lesson-card-number">{String(lesson.order).padStart(2, '0')}</div>
       <div className="lesson-card-copy">
-        <span className="small-muted">Страница {lesson.sourcePage} · {completed ? 'изучен' : 'не начат'}</span>
-        <h2>{lesson.title}</h2>
-        <p>{lesson.summary}</p>
+        <span className="small-muted">{t('Страница')} {lesson.sourcePage} · {t(completed ? 'изучен' : 'не начат')}</span>
+        <h2>{t(lesson.title)}</h2>
+        <p>{t(lesson.summary)}</p>
       </div>
       <Link className="button button-quiet" to={`/lessons/${lesson.id}`}>
-        Открыть <ArrowRight size={17} />
+        {t('Открыть')} <ArrowRight size={17} />
       </Link>
     </article>
   );
 }
 
 export function LessonsPage() {
+  const t = useInterfaceText();
   const lessons = [...courseCatalog.lessons].sort((left, right) => left.order - right.order);
   return (
     <section className="page-stack" aria-labelledby="lessons-title">
       <div className="page-heading">
-        <div><span className="eyebrow">Курс</span><h1 id="lessons-title">Уроки</h1></div>
+        <div><span className="eyebrow">{t('Курс')}</span><h1 id="lessons-title">{t('Уроки')}</h1></div>
       </div>
       {lessons.length === 0 ? (
         <EmptyCourse
@@ -81,17 +97,18 @@ export function LessonsPage() {
 
 function LessonMaterial({ lesson }: { lesson: Lesson }) {
   const { progress, updateProgress, recordActivity } = useProgress();
+  const t = useInterfaceText();
   const completed = progress.completedLessonIds.includes(lesson.id);
   return (
     <section className="page-stack" aria-labelledby="lesson-heading">
-      <Link className="back-link" to="/lessons"><ArrowLeft size={17} /> Все уроки</Link>
+      <Link className="back-link" to="/lessons"><ArrowLeft size={17} /> {t('Все уроки')}</Link>
       <article className="panel lesson-material">
-        <span className="eyebrow">Урок · источник: стр. {lesson.sourcePage}</span>
-        <h1 id="lesson-heading">{lesson.title}</h1>
-        <p>{lesson.summary}</p>
+        <span className="eyebrow">{t('Урок')} · {t('Источник: страница')} {lesson.sourcePage}</span>
+        <h1 id="lesson-heading">{t(lesson.title)}</h1>
+        <p>{t(lesson.summary)}</p>
         <div className="lesson-material-actions">
           <Link className="button button-soft" to={`/book/${lesson.sourcePage}`}>
-            <BookOpen size={18} /> Открыть страницу книги
+            <BookOpen size={18} /> {t('Открыть страницу книги')}
           </Link>
           <button
             className="button button-primary"
@@ -106,10 +123,10 @@ function LessonMaterial({ lesson }: { lesson: Lesson }) {
               recordActivity();
             }}
           >
-            <Check size={18} /> {completed ? 'Отметить как не пройденный' : 'Отметить урок пройденным'}
+            <Check size={18} /> {t(completed ? 'Отметить как не пройденный' : 'Отметить урок пройденным')}
           </button>
           <Link className="button button-quiet" to={`/quiz?lesson=${encodeURIComponent(lesson.id)}`}>
-            Практика <ArrowRight size={17} />
+            {t('Практика')} <ArrowRight size={17} />
           </Link>
         </div>
       </article>
@@ -118,13 +135,14 @@ function LessonMaterial({ lesson }: { lesson: Lesson }) {
 }
 
 export function LessonDetailPage() {
+  const t = useInterfaceText();
   const { lessonId } = useParams();
   const lesson = courseCatalog.lessons.find((item) => item.id === lessonId);
   if (!lesson) {
     return (
       <section className="page-stack">
         <div className="page-heading">
-          <div><span className="eyebrow">Курс</span><h1>Урок</h1></div>
+          <div><span className="eyebrow">{t('Курс')}</span><h1>{t('Урок')}</h1></div>
         </div>
         <EmptyCourse
           title="Такого урока пока нет"
@@ -309,6 +327,7 @@ const arabicDiacriticsGuide = [
 
 function WordCard({ word, onRate }: { word: VerifiedWord; onRate: () => void }) {
   const { progress, updateProgress, recordActivity } = useProgress();
+  const t = useInterfaceText();
   const [flipped, setFlipped] = useState(false);
   const [direction, setDirection] = useState<'ar-ru' | 'ru-ar'>('ar-ru');
   const arabicFirst = direction === 'ar-ru';
@@ -325,29 +344,29 @@ function WordCard({ word, onRate }: { word: VerifiedWord; onRate: () => void }) 
       <div className="flashcard-scene">
         <div className={`flashcard${flipped ? ' is-flipped' : ''}`}>
           <div className="flashcard-face flashcard-face-front" aria-hidden={flipped}>
-            <span className="flashcard-kicker">КАРТОЧКА</span>
+            <span className="flashcard-kicker">{t('КАРТОЧКА')}</span>
             <p className={frontIsArabic ? 'arabic-word' : 'flashcard-main'} lang={frontIsArabic ? 'ar' : undefined} dir={frontIsArabic ? 'rtl' : undefined}>
               {front}
             </p>
             {word.transliteration && frontIsArabic && (
               <span className="transliteration" lang="ru" dir="ltr">{word.transliteration}</span>
             )}
-            <span className="small-muted">Источник: страница {word.sourcePage}</span>
+            <span className="small-muted">{t('Источник: страница')} {word.sourcePage}</span>
             <button className="flashcard-flip" type="button" onClick={() => setFlipped(true)} tabIndex={flipped ? -1 : 0}>
-              Показать ответ
+              {t('Показать ответ')}
             </button>
           </div>
           <div className="flashcard-face flashcard-face-back" aria-hidden={!flipped}>
-            <span className="flashcard-kicker">ОТВЕТ</span>
+            <span className="flashcard-kicker">{t('ОТВЕТ')}</span>
             <p className={backIsArabic ? 'arabic-word' : 'flashcard-main'} lang={backIsArabic ? 'ar' : undefined} dir={backIsArabic ? 'rtl' : undefined}>
               {back}
             </p>
             {word.transliteration && backIsArabic && (
               <span className="transliteration" lang="ru" dir="ltr">{word.transliteration}</span>
             )}
-            <span className="small-muted">Источник: страница {word.sourcePage}</span>
+            <span className="small-muted">{t('Источник: страница')} {word.sourcePage}</span>
             <button className="flashcard-flip" type="button" onClick={() => setFlipped(false)} tabIndex={flipped ? 0 : -1}>
-              Показать сторону карточки
+              {t('Показать сторону карточки')}
             </button>
           </div>
         </div>
@@ -358,7 +377,7 @@ function WordCard({ word, onRate }: { word: VerifiedWord; onRate: () => void }) 
           type="button"
           onClick={() => setDirection((value) => value === 'ar-ru' ? 'ru-ar' : 'ar-ru')}
         >
-          Сменить направление
+          {t('Сменить направление')}
         </button>
         <button
           className={`button ${difficult ? 'button-warn' : 'button-soft'}`}
@@ -373,10 +392,10 @@ function WordCard({ word, onRate }: { word: VerifiedWord; onRate: () => void }) 
             recordActivity();
           }}
         >
-          <RotateCcw size={17} /> {difficult ? 'Убрать из сложных' : 'Повторить позже'}
+          <RotateCcw size={17} /> {t(difficult ? 'Убрать из сложных' : 'Повторить позже')}
         </button>
         <button className={`button ${known ? 'button-soft' : 'button-primary'}`} type="button" onClick={onRate}>
-          <Check size={17} /> {known ? 'Уже знаю · далее' : 'Знаю'}
+          <Check size={17} /> {t(known ? 'Уже знаю · далее' : 'Знаю')}
         </button>
       </div>
     </div>
@@ -385,6 +404,7 @@ function WordCard({ word, onRate }: { word: VerifiedWord; onRate: () => void }) 
 
 export function FlashcardsPage() {
   const { progress, updateProgress, recordActivity } = useProgress();
+  const t = useInterfaceText();
   const [query, setQuery] = useState('');
   const [order, setOrder] = useState<string[] | null>(null);
   const allWords = courseCatalog.words;
@@ -413,7 +433,7 @@ export function FlashcardsPage() {
     return (
       <section className="page-stack">
         <div className="page-heading">
-          <div><span className="eyebrow">Тренажёр</span><h1>Карточки слов</h1></div>
+          <div><span className="eyebrow">{t('Тренажёр')}</span><h1>{t('Карточки слов')}</h1></div>
         </div>
         <EmptyCourse
           title="Карточки появятся после сверки слов"
@@ -427,19 +447,19 @@ export function FlashcardsPage() {
     <section className="page-stack" aria-labelledby="cards-title">
       <div className="page-heading">
         <div>
-          <span className="eyebrow">Тренажёр слов</span>
-          <h1 id="cards-title">Карточки слов</h1>
-          <p>Карточка засчитывается как изученная только по вашему явному ответу «Знаю».</p>
+          <span className="eyebrow">{t('Тренажёр слов')}</span>
+          <h1 id="cards-title">{t('Карточки слов')}</h1>
+          <p>{t('Карточка засчитывается как изученная только по вашему явному ответу «Знаю».')}</p>
         </div>
         <div className="card-count">{currentIndex + 1} / {ordered.length}</div>
       </div>
       <div className="card-search-row">
         <label className="search-field">
-          <span className="sr-only">Поиск слов</span>
-          <input value={query} onChange={(event) => { setQuery(event.currentTarget.value); setCurrentIndex(0); }} placeholder="Найти слово или перевод" />
+          <span className="sr-only">{t('Поиск слов')}</span>
+          <input value={query} onChange={(event) => { setQuery(event.currentTarget.value); setCurrentIndex(0); }} placeholder={t('Найти слово или перевод')} />
         </label>
         <button className="button button-soft" type="button" onClick={() => { setOrder(shuffle(ordered).map((word) => word.id)); setCurrentIndex(0); }}>
-          <Shuffle size={17} /> Перемешать
+          <Shuffle size={17} /> {t('Перемешать')}
         </button>
       </div>
       {current ? (
@@ -448,9 +468,9 @@ export function FlashcardsPage() {
         <EmptyCourse title="По запросу ничего не найдено" description="Попробуйте изменить поисковый запрос." />
       )}
       <div className="card-stepper">
-        <button className="icon-button" type="button" aria-label="Предыдущее слово" onClick={() => setCurrentIndex((index) => (index - 1 + ordered.length) % ordered.length)}><ChevronLeft size={20} /></button>
-        <span>{progress.learnedWordIds.filter((id) => courseCatalog.words.some((word) => word.id === id)).length} слов уже отмечено как изученное</span>
-        <button className="icon-button" type="button" aria-label="Следующее слово" onClick={() => setCurrentIndex((index) => (index + 1) % ordered.length)}><ChevronRight size={20} /></button>
+        <button className="icon-button" type="button" aria-label={t('Предыдущее слово')} onClick={() => setCurrentIndex((index) => (index - 1 + ordered.length) % ordered.length)}><ChevronLeft size={20} /></button>
+        <span>{progress.learnedWordIds.filter((id) => courseCatalog.words.some((word) => word.id === id)).length} {t('слов уже отмечено как изученное')}</span>
+        <button className="icon-button" type="button" aria-label={t('Следующее слово')} onClick={() => setCurrentIndex((index) => (index + 1) % ordered.length)}><ChevronRight size={20} /></button>
       </div>
     </section>
   );
@@ -458,6 +478,7 @@ export function FlashcardsPage() {
 
 export function ReviewPage() {
   const { progress } = useProgress();
+  const t = useInterfaceText();
   const missedQuestions = courseCatalog.questions.filter(
     (question) => (progress.wrongAnswers[question.id] ?? 0) > 0,
   );
@@ -468,7 +489,7 @@ export function ReviewPage() {
   return (
     <section className="page-stack">
       <div className="page-heading">
-        <div><span className="eyebrow">Персональный повтор</span><h1>Повторить ошибки</h1><p>Список основан на ваших реальных ответах и отметках.</p></div>
+        <div><span className="eyebrow">{t('Персональный повтор')}</span><h1>{t('Повторить ошибки')}</h1><p>{t('Список основан на ваших реальных ответах и отметках.')}</p></div>
       </div>
       {missedQuestions.length === 0 && difficultWords.length === 0 ? (
         <EmptyCourse
@@ -480,14 +501,14 @@ export function ReviewPage() {
           {missedQuestions.length > 0 && (
             <article className="panel review-panel">
               <div className="panel-heading">
-                <div><span className="eyebrow">История ответов</span><h2>{missedQuestions.length} вопросов на повтор</h2></div>
-                <Link className="button button-primary" to={`/quiz/session?mode=review&count=${missedQuestions.length}`}>Повторить вопросы <ArrowRight size={17} /></Link>
+                <div><span className="eyebrow">{t('История ответов')}</span><h2>{missedQuestions.length} {t('вопросов на повтор')}</h2></div>
+                <Link className="button button-primary" to={`/quiz/session?mode=review&count=${missedQuestions.length}`}>{t('Повторить вопросы')} <ArrowRight size={17} /></Link>
               </div>
               <ul className="review-list">
                 {missedQuestions.map((question) => (
                   <li key={question.id}>
                     <span>{question.prompt}</span>
-                    <small>Ошибка: {progress.wrongAnswers[question.id]} · стр. {question.sourcePage}</small>
+                    <small>{t('Ошибка:')} {progress.wrongAnswers[question.id]} · {t('Страница')} {question.sourcePage}</small>
                   </li>
                 ))}
               </ul>
@@ -495,7 +516,7 @@ export function ReviewPage() {
           )}
           {difficultWords.length > 0 && (
             <article className="panel review-panel">
-              <div className="panel-heading"><div><span className="eyebrow">Слова</span><h2>{difficultWords.length} слов для повтора</h2></div></div>
+              <div className="panel-heading"><div><span className="eyebrow">{t('Слова')}</span><h2>{difficultWords.length} {t('слов для повтора')}</h2></div></div>
               <ul className="review-list">
                 {difficultWords.map((word) => (
                   <li key={word.id}>
@@ -504,7 +525,7 @@ export function ReviewPage() {
                   </li>
                 ))}
               </ul>
-              <Link className="button button-soft" to="/flashcards">Открыть карточки <ArrowRight size={17} /></Link>
+              <Link className="button button-soft" to="/flashcards">{t('Открыть карточки')} <ArrowRight size={17} /></Link>
             </article>
           )}
         </div>
@@ -514,6 +535,7 @@ export function ReviewPage() {
 }
 
 function ArabicAlphabetQuiz() {
+  const t = useInterfaceText();
   const quizQuestions = useMemo(() => {
     const questions = arabicAlphabetGuide.map((entry) => ({
       answer: entry.nameRu,
@@ -540,12 +562,12 @@ function ArabicAlphabetQuiz() {
       <article className="panel" style={{ padding: '24px' }}>
         <div className="panel-heading">
           <div>
-            <span className="eyebrow">Тест</span>
-            <h2>Готово: арабский алфавит</h2>
+            <span className="eyebrow">{t('Тест')}</span>
+            <h2>{t('Готово: арабский алфавит')}</h2>
           </div>
         </div>
         <p style={{ margin: '12px 0 0', color: 'var(--muted)', lineHeight: 1.6 }}>
-          Вы ответили правильно на {score} из {quizQuestions.length} букв.
+          {t('Вы ответили правильно на')} {score} / {quizQuestions.length} {t('букв.')}
         </p>
       </article>
     );
@@ -578,8 +600,8 @@ function ArabicAlphabetQuiz() {
     <article className="panel" style={{ padding: '24px' }}>
       <div className="panel-heading">
         <div>
-          <span className="eyebrow">Проверка</span>
-          <h2>Тест по арабскому алфавиту</h2>
+          <span className="eyebrow">{t('Проверка')}</span>
+          <h2>{t('Тест по арабскому алфавиту')}</h2>
         </div>
         <strong style={{ color: 'var(--green-dark)' }}>{score} / {quizQuestions.length}</strong>
       </div>
@@ -604,21 +626,21 @@ function ArabicAlphabetQuiz() {
                   background: revealState ? (isCorrect ? 'var(--green-soft)' : '#fff1ed') : undefined,
                 }}
               >
-                {option}
+                {t(option)}
               </button>
             );
           })}
         </div>
         {selected !== null && (
           <div className={`answer-feedback ${selected === currentQuestion.answer ? 'feedback-correct' : 'feedback-wrong'}`} role="status">
-            <strong>{selected === currentQuestion.answer ? 'Правильно' : 'Неверно'}</strong>
+            <strong>{t(selected === currentQuestion.answer ? 'Правильно!' : 'Неправильно')}</strong>
             <span>
               {selected === currentQuestion.answer
-                ? 'Верно. Это буква ' + currentQuestion.answer + '.'
-                : 'Правильный ответ: ' + currentQuestion.answer + '.'}
+                ? `${t('Верно. Это буква')} ${t(currentQuestion.answer)}.`
+                : `${t('Правильный ответ:')} ${t(currentQuestion.answer)}.`}
             </span>
             <button className="button button-primary" type="button" onClick={handleNext}>
-              {questionIndex === quizQuestions.length - 1 ? 'Завершить' : 'Следующий вопрос'}
+              {t(questionIndex === quizQuestions.length - 1 ? 'Завершить' : 'Следующий вопрос')}
             </button>
           </div>
         )}
@@ -628,21 +650,23 @@ function ArabicAlphabetQuiz() {
 }
 
 export function HarakatReferencePage() {
+  const { progress } = useProgress();
+  const t = useInterfaceText();
   return (
     <section className="page-stack" aria-labelledby="harakat-title">
       <div className="page-heading">
         <div>
-          <span className="eyebrow">Справочник</span>
-          <h1 id="harakat-title">Арабские знаки, огласовки и алфавит</h1>
-          <p>Набор правил и примеров помогает отличать знаки, влияющие на чтение слова, и быстро вспоминать базовые буквы.</p>
+          <span className="eyebrow">{t('Справочник')}</span>
+          <h1 id="harakat-title">{t('Арабские знаки, огласовки и алфавит')}</h1>
+          <p>{t('Набор правил и примеров помогает отличать знаки, влияющие на чтение слова, и быстро вспоминать базовые буквы.')}</p>
         </div>
       </div>
 
       <article className="panel">
         <div className="panel-heading">
           <div>
-            <span className="eyebrow">Основы</span>
-            <h2>Арабский алфавит</h2>
+            <span className="eyebrow">{t('Основы')}</span>
+            <h2>{t('Арабский алфавит')}</h2>
           </div>
         </div>
         <div className="guide-grid">
@@ -650,10 +674,10 @@ export function HarakatReferencePage() {
             <article key={`${entry.letter}-${entry.nameRu}`} className="guide-card panel">
               <div className="guide-sign" lang="ar" dir="rtl">{entry.letter}</div>
               <div className="guide-copy">
-                <span className="eyebrow">{entry.nameRu}</span>
+                <span className="eyebrow">{t(entry.nameRu)}</span>
                 <h2>{entry.letter}</h2>
-                <p><strong>Звук:</strong> {entry.pronunciation}</p>
-                <p><strong>Транскрипция:</strong> {entry.transliteration}</p>
+                <p><strong>{t('Звук:')}</strong> {t(entry.pronunciation)}</p>
+                <p><strong>{t('Транскрипция:')}</strong> {entry.transliteration}</p>
               </div>
             </article>
           ))}
@@ -665,8 +689,8 @@ export function HarakatReferencePage() {
       <article className="panel">
         <div className="panel-heading">
           <div>
-            <span className="eyebrow">Чтение</span>
-            <h2>Знаки и огласовки</h2>
+            <span className="eyebrow">{t('Чтение')}</span>
+            <h2>{t('Знаки и огласовки')}</h2>
           </div>
         </div>
         <div className="guide-grid">
@@ -674,13 +698,13 @@ export function HarakatReferencePage() {
             <article key={`${entry.symbol}-${entry.nameRu}`} className="guide-card panel">
               <div className="guide-sign" lang="ar" dir="rtl">{entry.symbol}</div>
               <div className="guide-copy">
-                <span className="eyebrow">{entry.nameRu}</span>
-                <h2>{entry.nameKy}</h2>
-                <p><strong>Произношение:</strong> {entry.pronunciation}</p>
-                <p><strong>Как влияет на чтение:</strong> {entry.effect}</p>
-                <p><strong>Пример:</strong> <span className="arabic-inline" lang="ar" dir="rtl">{entry.example}</span></p>
-                <p><strong>Транскрипция:</strong> {entry.transliteration}</p>
-                <p><strong>Перевод:</strong> {entry.meaning}</p>
+                <span className="eyebrow">{progress.translationLanguage === 'ky' ? entry.nameKy : entry.nameRu}</span>
+                <h2>{progress.translationLanguage === 'ky' ? entry.nameKy : entry.nameRu}</h2>
+                <p><strong>{t('Произношение:')}</strong> {t(entry.pronunciation)}</p>
+                <p><strong>{t('Как влияет на чтение:')}</strong> {t(entry.effect)}</p>
+                <p><strong>{t('Пример:')}</strong> <span className="arabic-inline" lang="ar" dir="rtl">{entry.example}</span></p>
+                <p><strong>{t('Транскрипция:')}</strong> {entry.transliteration}</p>
+                <p><strong>{t('Перевод:')}</strong> {t(entry.meaning)}</p>
               </div>
             </article>
           ))}
@@ -691,21 +715,22 @@ export function HarakatReferencePage() {
 }
 
 export function PracticePage() {
+  const t = useInterfaceText();
   return (
     <section className="page-stack">
       <div className="page-heading">
-        <div><span className="eyebrow">Практика</span><h1>Тренировка</h1><p>Выберите способ повторения подтверждённого материала.</p></div>
+        <div><span className="eyebrow">{t('Практика')}</span><h1>{t('Тренировка')}</h1><p>{t('Выберите способ повторения подтверждённого материала.')}</p></div>
       </div>
       <div className="practice-choice-grid">
         <Link className="practice-choice" to="/flashcards">
           <span className="quick-icon"><BookOpen size={20} /></span>
-          <h2>Карточки слов</h2><p>Повторяйте написание и перевод по карточкам.</p>
-          <span>К карточкам <ArrowRight size={16} /></span>
+          <h2>{t('Карточки слов')}</h2><p>{t('Повторяйте написание и перевод по карточкам.')}</p>
+          <span>{t('К карточкам')} <ArrowRight size={16} /></span>
         </Link>
         <Link className="practice-choice" to="/quiz">
           <span className="quick-icon"><Check size={20} /></span>
-          <h2>Тесты</h2><p>Проверяйте ответы на основе проверенных материалов.</p>
-          <span>Выбрать тест <ArrowRight size={16} /></span>
+          <h2>{t('Тесты')}</h2><p>{t('Проверяйте ответы на основе проверенных материалов.')}</p>
+          <span>{t('Выбрать тест')} <ArrowRight size={16} /></span>
         </Link>
       </div>
       <SourceNote />
@@ -715,6 +740,7 @@ export function PracticePage() {
 
 export function QuizSetupPage() {
   const navigate = useNavigate();
+  const t = useInterfaceText();
   const [searchParams] = useSearchParams();
   const initialLessonId = searchParams.get('lesson') ?? '';
   const [lessonId, setLessonId] = useState(initialLessonId);
@@ -728,7 +754,7 @@ export function QuizSetupPage() {
   if (courseCatalog.questions.length === 0) {
     return (
       <section className="page-stack">
-        <div className="page-heading"><div><span className="eyebrow">Практика</span><h1>Выбрать тест</h1></div></div>
+        <div className="page-heading"><div><span className="eyebrow">{t('Практика')}</span><h1>{t('Выбрать тест')}</h1></div></div>
         <EmptyCourse
           title="Тесты пока не готовы"
           description="Тесты появятся после сверки слов с книгой. Каждый вопрос строится по подтверждённому написанию, переводу и странице источника."
@@ -739,13 +765,13 @@ export function QuizSetupPage() {
 
   return (
     <section className="page-stack">
-      <div className="page-heading"><div><span className="eyebrow">Практика</span><h1>Выбрать тест</h1><p>Вопросы случайно перемешиваются и не повторяются в одной попытке.</p></div></div>
+      <div className="page-heading"><div><span className="eyebrow">{t('Практика')}</span><h1>{t('Выбрать тест')}</h1><p>{t('Вопросы случайно перемешиваются и не повторяются в одной попытке.')}</p></div></div>
       <form className="panel quiz-setup" onSubmit={(event) => {
         event.preventDefault();
         if (canStart) navigate(`/quiz/session?count=${count}${lessonId ? `&lesson=${encodeURIComponent(lessonId)}` : ''}`);
       }}>
         <label className="form-field">
-          <span>Урок</span>
+          <span>{t('Урок')}</span>
           <select value={lessonId} onChange={(event) => {
             const nextLessonId = event.currentTarget.value;
             const nextAvailableCount = courseCatalog.questions.filter(
@@ -754,16 +780,16 @@ export function QuizSetupPage() {
             setLessonId(nextLessonId);
             setCount((currentCount) => Math.min(Math.max(currentCount, 1), nextAvailableCount));
           }}>
-            <option value="">Все доступные уроки</option>
-            {courseCatalog.lessons.map((lesson) => <option value={lesson.id} key={lesson.id}>{lesson.title}</option>)}
+            <option value="">{t('Все доступные уроки')}</option>
+            {courseCatalog.lessons.map((lesson) => <option value={lesson.id} key={lesson.id}>{t(lesson.title)}</option>)}
           </select>
         </label>
         <label className="form-field">
-          <span>Количество вопросов</span>
+          <span>{t('Количество вопросов')}</span>
           <input type="number" min={1} max={availableQuestions.length} value={count} onChange={(event) => setCount(Number(event.currentTarget.value))} />
-          <small>Доступно в выбранном наборе: {availableQuestions.length}</small>
+          <small>{t('Доступно в выбранном наборе:')} {availableQuestions.length}</small>
         </label>
-        <button className="button button-primary" disabled={!canStart} type="submit">Начать тест <ArrowRight size={17} /></button>
+        <button className="button button-primary" disabled={!canStart} type="submit">{t('Начать тест')} <ArrowRight size={17} /></button>
       </form>
     </section>
   );
@@ -772,11 +798,12 @@ export function QuizSetupPage() {
 export function QuizSessionPage() {
   const [searchParams] = useSearchParams();
   const { progress, updateProgress } = useProgress();
+  const t = useInterfaceText();
   const lessonId = searchParams.get('lesson');
   const reviewMode = searchParams.get('mode') === 'review';
   const countParameter = Number(searchParams.get('count') ?? '10');
   const requested = Number.isInteger(countParameter) && countParameter > 0 ? countParameter : 10;
-  const [questions] = useState(() =>
+  const [questions, setQuestions] = useState(() =>
     createQuizRound(
       courseCatalog.questions.filter((question) =>
         (!lessonId || question.lessonId === lessonId) &&
@@ -788,14 +815,30 @@ export function QuizSessionPage() {
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answer, setAnswer] = useState<string | null>(null);
   const [answerIsCorrect, setAnswerIsCorrect] = useState<boolean | null>(null);
+  const [answerError, setAnswerError] = useState<string | null>(null);
   const [typedAnswer, setTypedAnswer] = useState('');
   const answerInputRef = useRef<HTMLInputElement>(null);
+  const submittedQuestionId = useRef<string | null>(null);
   const [score, setScore] = useState(0);
   const [complete, setComplete] = useState(false);
   const question = questions[questionIndex];
+  const questionIsArabic = Boolean(question && /[\u0600-\u06ff]/u.test(question.prompt));
+  const questionWord = question?.wordId
+    ? courseCatalog.words.find((word) => word.id === question.wordId)
+    : undefined;
+  const questionPrompt = question?.type === 'text' && questionWord
+    ? localizeTranslation(questionWord.translation, progress.translationLanguage)
+    : question?.prompt ?? '';
+  const questionTransliteration = question && questionIsArabic
+    ? questionWord?.transliteration ??
+      transliterateArabic(question.prompt)
+    : '';
   const translatedAnswer = question?.type === 'choice'
     ? localizeTranslation(question.answer, progress.translationLanguage)
     : question?.answer ?? '';
+  const answerTranslation = question?.type === 'text'
+    ? questionPrompt
+    : translatedAnswer;
   const choices = useMemo(
     () => question?.type === 'choice'
       ? shuffle(question.choices?.map((choice) => localizeTranslation(choice, progress.translationLanguage)) ?? [])
@@ -814,7 +857,7 @@ export function QuizSessionPage() {
 
   function finishQuiz(finalScore: number) {
     const attempt: QuizAttempt = {
-      id: globalThis.crypto.randomUUID(),
+      id: createQuizAttemptId(),
       date: new Date().toISOString(),
       score: finalScore,
       total: questions.length,
@@ -828,26 +871,75 @@ export function QuizSessionPage() {
   }
 
   function chooseAnswer(option: string) {
-    if (!question || answer !== null) return;
-    setAnswer(option);
-    const correct = question.type === 'text'
-      ? isArabicAnswerCorrect(option, question.acceptedAnswers ?? [question.answer])
-      : option === localizeTranslation(question.answer, progress.translationLanguage);
-    setAnswerIsCorrect(correct);
-    const nextScore = correct ? score + 1 : score;
-    setScore(nextScore);
-    if (!correct) {
-      updateProgress((current) => ({
-        ...current,
-        wrongAnswers: {
-          ...current.wrongAnswers,
-          [question.id]: (current.wrongAnswers[question.id] ?? 0) + 1,
-        },
-        ...(question.wordId ? {
-          difficultWordIds: [...new Set([...current.difficultWordIds, question.wordId])],
-        } : {}),
-      }));
+    if (!question || answer !== null || submittedQuestionId.current === question?.id) return;
+    if (question.type === 'text' && normalizeArabicAnswer(option).length === 0) {
+      setAnswerError('Введите ответ, прежде чем отправлять его на проверку.');
+      return;
     }
+
+    submittedQuestionId.current = question.id;
+    setAnswerError(null);
+    try {
+      const correct = question.type === 'text'
+        ? isArabicAnswerCorrect(option, question.acceptedAnswers ?? [question.answer])
+        : option === localizeTranslation(question.answer, progress.translationLanguage);
+      if (!correct) {
+        updateProgress((current) => ({
+          ...current,
+          wrongAnswers: {
+            ...current.wrongAnswers,
+            [question.id]: (current.wrongAnswers[question.id] ?? 0) + 1,
+          },
+          ...(question.wordId ? {
+            difficultWordIds: [...new Set([...current.difficultWordIds, question.wordId])],
+          } : {}),
+        }));
+      }
+      setAnswer(option);
+      setAnswerIsCorrect(correct);
+      if (correct) setScore((currentScore) => currentScore + 1);
+    } catch (error) {
+      submittedQuestionId.current = null;
+      if (import.meta.env.DEV) console.error('Не удалось проверить ответ теста:', error);
+      setAnswerError('Не удалось проверить ответ. Ваш ввод сохранён — попробуйте ещё раз.');
+    }
+  }
+
+  function advanceQuestion() {
+    if (!question || answer === null || submittedQuestionId.current !== question.id) return;
+    setAnswerError(null);
+    if (questionIndex + 1 >= questions.length) {
+      try {
+        finishQuiz(score);
+        submittedQuestionId.current = null;
+      } catch (error) {
+        if (import.meta.env.DEV) console.error('Не удалось завершить тест:', error);
+        setAnswerError('Не удалось сохранить результат теста. Нажмите «Завершить» ещё раз.');
+      }
+      return;
+    }
+
+    submittedQuestionId.current = null;
+    setQuestionIndex((index) => index + 1);
+    setAnswer(null);
+    setAnswerIsCorrect(null);
+    setTypedAnswer('');
+  }
+
+  function restartQuiz() {
+    const freshQuestions = courseCatalog.questions.filter((candidate) =>
+      (!lessonId || candidate.lessonId === lessonId) &&
+      (!reviewMode || (progress.wrongAnswers[candidate.id] ?? 0) > 0),
+    );
+    setQuestions(createQuizRound(freshQuestions, requested));
+    submittedQuestionId.current = null;
+    setQuestionIndex(0);
+    setAnswer(null);
+    setAnswerIsCorrect(null);
+    setAnswerError(null);
+    setTypedAnswer('');
+    setScore(0);
+    setComplete(false);
   }
 
   function insertArabicKey(symbol: string) {
@@ -866,29 +958,41 @@ export function QuizSessionPage() {
     const percent = Math.round((score / questions.length) * 100);
     return (
       <section className="panel quiz-result">
-        <span className="eyebrow">Результат теста</span>
-        <h1>{score} из {questions.length}</h1>
-        <p>{percent}% правильных ответов. Результат сохранён на этом устройстве.</p>
+        <span className="eyebrow">{t('Результат теста')}</span>
+        <h1>{score} / {questions.length}</h1>
+        <p>{percent}% {t('правильных ответов. Результат сохранён на этом устройстве.')}</p>
         <div className="result-actions">
-          <button className="button button-primary" type="button" onClick={() => window.location.reload()}><RotateCcw size={17} /> Пройти ещё раз</button>
-          <Link className="button button-soft" to="/progress">Мой прогресс <ArrowRight size={17} /></Link>
+          <button className="button button-primary" type="button" onClick={restartQuiz}><RotateCcw size={17} /> {t('Пройти ещё раз')}</button>
+          <Link className="button button-soft" to="/progress">{t('Мой прогресс')} <ArrowRight size={17} /></Link>
         </div>
       </section>
     );
   }
 
-  if (!question) return null;
+  if (!question) {
+    return (
+      <section className="page-stack">
+        <EmptyCourse title="Вопрос не найден" description="Попробуйте запустить тест заново — текущий прогресс не будет потерян." />
+        <Link className="button button-primary" to="/quiz">{t('К выбору теста')}</Link>
+      </section>
+    );
+  }
   return (
     <section className="page-stack" aria-labelledby="quiz-prompt">
-      <Link className="back-link" to="/quiz"><ArrowLeft size={17} /> К выбору теста</Link>
+      <Link className="back-link" to="/quiz"><ArrowLeft size={17} /> {t('К выбору теста')}</Link>
       <div className="quiz-progress-line">
-        <span>Вопрос {questionIndex + 1} из {questions.length}</span>
-        <strong>{score} верно</strong>
+        <span>{t('Вопрос')} {questionIndex + 1} / {questions.length}</span>
+        <strong>{score} {t('верно')}</strong>
       </div>
       <div className="progress-track"><span style={{ width: `${(questionIndex / questions.length) * 100}%` }} /></div>
       <article className="panel quiz-card">
-        <span className="eyebrow">Источник: страница {question.sourcePage}</span>
-        <h1 id="quiz-prompt" dir="auto">{question.prompt}</h1>
+        <span className="eyebrow">{t('Источник: страница')} {question.sourcePage}</span>
+        <h1 id="quiz-prompt" dir="auto">{questionPrompt}</h1>
+        {questionTransliteration && (
+          <p className="quiz-transliteration" lang="ru" dir="ltr">
+            <strong>{t('Транскрипция:')}</strong> {questionTransliteration}
+          </p>
+        )}
         {question.type === 'choice' ? (
           <div className="quiz-options">
             {choices.map((choice) => (
@@ -909,56 +1013,73 @@ export function QuizSessionPage() {
             event.preventDefault();
             chooseAnswer(typedAnswer);
           }}>
-            <label className="sr-only" htmlFor="arabic-answer">Введите ответ по-арабски</label>
+            <label className="sr-only" htmlFor="arabic-answer">{t('Введите ответ по-арабски')}</label>
             <input
               id="arabic-answer"
               ref={answerInputRef}
               className="arabic-answer-input"
               value={typedAnswer}
               disabled={answer !== null}
-              onChange={(event) => setTypedAnswer(event.currentTarget.value)}
+              onChange={(event) => {
+                setTypedAnswer(event.currentTarget.value);
+                setAnswerError(null);
+              }}
               lang="ar"
               dir="rtl"
               autoComplete="off"
               spellCheck={false}
               placeholder="اكتب الإجابة"
             />
-            <div className="arabic-keyboard" aria-label="Экранная арабская клавиатура">
+            <div className="arabic-keyboard" aria-label={t('Экранная арабская клавиатура')}>
               {arabicKeyboard.map((symbol) => (
                 <button key={symbol} type="button" disabled={answer !== null} onClick={() => insertArabicKey(symbol)} lang="ar" dir="rtl">
                   {symbol}
                 </button>
               ))}
-              <button type="button" disabled={answer !== null} onClick={() => setTypedAnswer((value) => value.slice(0, -1))} aria-label="Удалить последний символ">⌫</button>
+              <button type="button" disabled={answer !== null} onClick={() => setTypedAnswer((value) => value.slice(0, -1))} aria-label={t('Удалить последний символ')}>⌫</button>
             </div>
-            <button className="button button-primary" type="submit" disabled={answer !== null || typedAnswer.trim().length === 0}>
-              Проверить ответ
+            <button className="button button-primary" type="submit" disabled={answer !== null}>
+              {t('Готово')}
             </button>
           </form>
         )}
+        {answerError && (
+          <div className="answer-feedback feedback-wrong" role="alert">
+            <strong>{t('Не удалось продолжить')}</strong>
+            <span>{t(answerError)}</span>
+            {answer === null && normalizeArabicAnswer(typedAnswer).length > 0 && (
+              <button className="button button-soft" type="button" onClick={() => chooseAnswer(typedAnswer)}>
+                {t('Повторить проверку')}
+              </button>
+            )}
+          </div>
+        )}
         {answer !== null && (
           <div className={`answer-feedback ${answerIsCorrect ? 'feedback-correct' : 'feedback-wrong'}`} role="status">
-            <strong>{answerIsCorrect ? 'Правильно' : 'Неверно'}</strong>
+            <strong>{t(answerIsCorrect ? 'Правильно!' : 'Неправильно')}</strong>
             {answerIsCorrect ? (
-              <span>{question.explanation ?? 'Вы ответили верно.'}</span>
+              <>
+                <span>{t(question.explanation ?? 'Вы ответили верно.')}</span>
+                {question.type === 'text' && (
+                  <div className="answer-details">
+                    <p><strong>{t('Ответ:')}</strong> <span className="answer-value answer-value-arabic" lang="ar" dir="rtl">{question.answer}</span></p>
+                    <p><strong>{t('Транскрипция:')}</strong> <span className="answer-value" lang="ru" dir="ltr">{courseCatalog.words.find((word) => word.id === question.wordId)?.transliteration ?? transliterateArabic(question.answer)}</span></p>
+                  </div>
+                )}
+              </>
             ) : (
               <div className="answer-details">
-                <p><strong>Ваш ответ:</strong> <span className="answer-value">{answer}</span></p>
-                <p><strong>Правильный ответ:</strong> <span className="answer-value answer-value-arabic" lang="ar" dir="rtl">{translatedAnswer}</span></p>
-                <p><strong>Перевод:</strong> <span className="answer-value">{localizeTranslation(question.answer, progress.translationLanguage)}</span></p>
-                {question.explanation && <p><strong>Объяснение:</strong> <span className="answer-value">{question.explanation}</span></p>}
+                <p><strong>{t('Ваш ответ:')}</strong> <span className="answer-value">{answer}</span></p>
+                <p><strong>{t('Правильный ответ:')}</strong> <span className={`answer-value${question.type === 'text' ? ' answer-value-arabic' : ''}`} lang={question.type === 'text' ? 'ar' : undefined} dir={question.type === 'text' ? 'rtl' : 'auto'}>{translatedAnswer}</span></p>
+                {question.type === 'text' && (
+                  <p><strong>{t('Транскрипция:')}</strong> <span className="answer-value" lang="ru" dir="ltr">{courseCatalog.words.find((word) => word.id === question.wordId)?.transliteration ?? transliterateArabic(question.answer)}</span></p>
+                )}
+                <p><strong>{t('Перевод:')}</strong> <span className="answer-value">{answerTranslation}</span></p>
+                {question.explanation && <p><strong>{t('Объяснение:')}</strong> <span className="answer-value">{t(question.explanation)}</span></p>}
               </div>
             )}
-            <button className="button button-primary" type="button" onClick={() => {
-              if (questionIndex + 1 >= questions.length) finishQuiz(score);
-              else {
-                setQuestionIndex((index) => index + 1);
-                setAnswer(null);
-                setAnswerIsCorrect(null);
-                setTypedAnswer('');
-              }
-            }}>
-              {questionIndex + 1 === questions.length ? 'Завершить' : 'Следующий вопрос'} <ArrowRight size={17} />
+            <button className="button button-primary" type="button" onClick={advanceQuestion}>
+              {t(questionIndex + 1 === questions.length ? 'Завершить' : 'Следующий вопрос')} <ArrowRight size={17} />
             </button>
           </div>
         )}
@@ -969,28 +1090,29 @@ export function QuizSessionPage() {
 
 export function ProgressPage() {
   const { progress } = useProgress();
+  const t = useInterfaceText();
   const verifiedLearned = progress.learnedWordIds.filter((id) => courseCatalog.words.some((word) => word.id === id)).length;
   const average = progress.quizAttempts.length === 0
     ? 0
     : Math.round(progress.quizAttempts.reduce((sum, attempt) => sum + attempt.score / attempt.total, 0) / progress.quizAttempts.length * 100);
   return (
     <section className="page-stack">
-      <div className="page-heading"><div><span className="eyebrow">Ваша статистика</span><h1>Прогресс</h1><p>Здесь только действия, записанные приложением.</p></div></div>
+      <div className="page-heading"><div><span className="eyebrow">{t('Ваша статистика')}</span><h1>{t('Прогресс')}</h1><p>{t('Здесь только действия, записанные приложением.')}</p></div></div>
       <div className="stat-grid progress-stat-grid">
-        <article className="stat-card"><span className="stat-label">Учебных дней</span><strong>{progress.activeDates.length}</strong></article>
-        <article className="stat-card"><span className="stat-label">Тестов пройдено</span><strong>{progress.quizAttempts.length}</strong></article>
-        <article className="stat-card"><span className="stat-label">Средний результат</span><strong>{average}<small>%</small></strong></article>
-        <article className="stat-card"><span className="stat-label">Слов изучено</span><strong>{verifiedLearned}</strong></article>
+        <article className="stat-card"><span className="stat-label">{t('Учебных дней')}</span><strong>{progress.activeDates.length}</strong></article>
+        <article className="stat-card"><span className="stat-label">{t('Тестов пройдено')}</span><strong>{progress.quizAttempts.length}</strong></article>
+        <article className="stat-card"><span className="stat-label">{t('Средний результат')}</span><strong>{average}<small>%</small></strong></article>
+        <article className="stat-card"><span className="stat-label">{t('Слов изучено')}</span><strong>{verifiedLearned}</strong></article>
       </div>
       <article className="panel history-panel">
-        <h2>История тестов</h2>
+        <h2>{t('История тестов')}</h2>
         {progress.quizAttempts.length === 0 ? (
-          <p className="empty-inline">Пройденных тестов пока нет.</p>
+          <p className="empty-inline">{t('Пройденных тестов пока нет.')}</p>
         ) : (
           <ol className="attempt-list">
             {[...progress.quizAttempts].reverse().map((attempt) => (
               <li key={attempt.id}>
-                <span>{new Intl.DateTimeFormat('ru', { dateStyle: 'medium' }).format(new Date(attempt.date))}</span>
+                <span>{formatInterfaceDate(new Date(attempt.date), progress.translationLanguage)}</span>
                 <strong>{attempt.score} / {attempt.total}</strong>
                 <span>{Math.round(attempt.score / attempt.total * 100)}%</span>
               </li>
@@ -999,8 +1121,8 @@ export function ProgressPage() {
         )}
       </article>
       <article className="panel history-panel">
-        <h2>Последнее чтение</h2>
-        <p className="empty-inline">Страница {progress.lastReadPage} · <Link to={`/book/${progress.lastReadPage}`}>вернуться к книге <ArrowRight size={15} /></Link></p>
+        <h2>{t('Последнее чтение')}</h2>
+        <p className="empty-inline">{t('Страница')} {progress.lastReadPage} · <Link to={`/book/${progress.lastReadPage}`}>{t('вернуться к книге')} <ArrowRight size={15} /></Link></p>
       </article>
     </section>
   );
@@ -1008,19 +1130,20 @@ export function ProgressPage() {
 
 export function SettingsPage() {
   const { progress, updateProgress } = useProgress();
+  const t = useInterfaceText();
   return (
     <section className="page-stack">
-      <div className="page-heading"><div><span className="eyebrow">Приложение</span><h1>Настройки</h1><p>Настройки и прогресс сохраняются в локальном хранилище браузера.</p></div></div>
+      <div className="page-heading"><div><span className="eyebrow">{t('Приложение')}</span><h1>{t('Настройки')}</h1><p>{t('Настройки и прогресс сохраняются в локальном хранилище браузера.')}</p></div></div>
       <div className="panel settings-panel">
         <div className="settings-row">
-          <span><strong>Тема оформления</strong><small>Переключить светлую или тёмную тему</small></span>
+          <span><strong>{t('Тема оформления')}</strong><small>{t('Переключить светлую или тёмную тему')}</small></span>
           <button className="button button-soft" type="button" onClick={() => updateProgress((current) => ({ ...current, theme: current.theme === 'light' ? 'dark' : 'light' }))}>
             {progress.theme === 'light' ? <Sun size={17} /> : <Moon size={17} />}
-            {progress.theme === 'light' ? 'Светлая' : 'Тёмная'}
+            {t(progress.theme === 'light' ? 'Светлая' : 'Тёмная')}
           </button>
         </div>
         <label className="settings-row">
-          <span><strong>Язык перевода</strong><small>Кыргызский — дополнительный перевод, не текст из книги</small></span>
+          <span><strong>{t('Язык интерфейса и перевода')}</strong><small>{t('Кыргызский — дополнительный перевод, не текст из книги')}</small></span>
           <select
             value={progress.translationLanguage}
             onChange={(event) => {
@@ -1030,12 +1153,12 @@ export function SettingsPage() {
               }
             }}
           >
-            <option value="ru">Русский</option>
-            <option value="ky">Кыргызча</option>
+            <option value="ru">{t('Русский')}</option>
+            <option value="ky">{t('Кыргызча')}</option>
           </select>
         </label>
         <label className="settings-row">
-          <span><strong>Дневная цель</strong><small>Планируемое количество слов</small></span>
+          <span><strong>{t('Дневная цель')}</strong><small>{t('Планируемое количество слов')}</small></span>
           <input className="goal-input" type="number" min={1} max={500} value={progress.dailyGoal} onChange={(event) => {
             const goal = Number(event.currentTarget.value);
             if (Number.isInteger(goal) && goal >= 1 && goal <= 500) {
@@ -1044,8 +1167,8 @@ export function SettingsPage() {
           }} />
         </label>
         <div className="settings-row">
-          <span><strong>Данные курса</strong><small>Материалы не отправляются на сервер</small></span>
-          <span className="settings-local">Только на этом устройстве</span>
+          <span><strong>{t('Данные курса')}</strong><small>{t('Материалы не отправляются на сервер')}</small></span>
+          <span className="settings-local">{t('Только на этом устройстве')}</span>
         </div>
       </div>
     </section>

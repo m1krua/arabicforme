@@ -3,6 +3,7 @@ import {
   createQuizRound,
   isArabicAnswerCorrect,
   parseCourseCatalog,
+  transliterateArabic,
 } from './course';
 import { courseCatalog } from '../data/course';
 import { hasKyrgyzTranslation, localizeTranslation } from '../data/kyrgyz';
@@ -140,5 +141,23 @@ describe('source-aware course data', () => {
   it('ignores spacing and bidirectional marks but preserves Arabic diacritics', () => {
     expect(isArabicAnswerCorrect('  كَتَبَ\u200f ', ['كَتَبَ'])).toBe(true);
     expect(isArabicAnswerCorrect('كتب', ['كَتَبَ'])).toBe(false);
+    expect(isArabicAnswerCorrect('كتب', ['كَتَبَ', 'كتب'])).toBe(true);
+    expect(isArabicAnswerCorrect('', ['كتب'])).toBe(false);
+  });
+
+  it('normalizes Unicode and outer whitespace without merging words or Arabic letters', () => {
+    expect(isArabicAnswerCorrect('  ا\u0655جابة  ', ['إجابة'])).toBe(true);
+    expect(isArabicAnswerCorrect('كَتَبَ بَابٌ', ['كَتَبَبَابٌ'])).toBe(false);
+    expect(isArabicAnswerCorrect('كَتَبَ', ['كَتَبَـ'])).toBe(false);
+    expect(isArabicAnswerCorrect('صَبَرَ', ['سَبَرَ'])).toBe(false);
+  });
+
+  it('transliterates vowelled Arabic answers using the course transliteration style', () => {
+    expect(transliterateArabic('كَتَبَ')).toBe('kataba');
+    expect(transliterateArabic('كَاتِبٌ')).toBe('kātibun');
+    expect(transliterateArabic('رَتَّبَ')).toBe('rattaba');
+    expect(transliterateArabic('مَدْرَسَةٌ')).toBe('madrasatun');
+    expect(transliterateArabic('شَيْئًا')).toBe('shayʾan');
+    expect(transliterateArabic('الْكِتَابُ')).toBe('alkitābu');
   });
 });

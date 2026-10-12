@@ -146,8 +146,8 @@ export function normalizeArabicAnswer(value: string): string {
 
   return value
     .normalize('NFC')
-    .replace(/[\s\u00A0\u061C\u1680\u180E\u2000-\u200F\u202A-\u202F\u205F\u2060-\u206F\uFEFF]/g, '')
-    .replace(/\u0640/g, '');
+    .trim()
+    .replace(/[\u061C\u200E\u200F\u202A-\u202E\u2066-\u2069]/g, '');
 }
 
 export function isArabicAnswerCorrect(answer: string, acceptedAnswers: readonly string[]): boolean {
@@ -157,4 +157,69 @@ export function isArabicAnswerCorrect(answer: string, acceptedAnswers: readonly 
 
   const normalized = normalizeArabicAnswer(answer);
   return acceptedAnswers.some((accepted) => typeof accepted === 'string' && normalizeArabicAnswer(accepted) === normalized);
+}
+
+const arabicTransliteration: Readonly<Record<string, string>> = {
+  ا: 'ā', أ: 'ʾ', إ: 'ʾ', آ: 'ʾā', ؤ: 'ʾ', ئ: 'ʾ', ء: 'ʾ',
+  ب: 'b', ت: 't', ث: 'th', ج: 'j', ح: 'ḥ', خ: 'kh', د: 'd', ذ: 'dh',
+  ر: 'r', ز: 'z', س: 's', ش: 'sh', ص: 'ṣ', ض: 'ḍ', ط: 'ṭ', ظ: 'ẓ',
+  ع: 'ʿ', غ: 'gh', ف: 'f', ق: 'q', ك: 'k', ل: 'l', م: 'm', ن: 'n',
+  ه: 'h', و: 'w', ي: 'y', ى: 'ā', ة: 'h',
+};
+
+export function transliterateArabic(value: string): string {
+  const characters = [...value.normalize('NFC')];
+  let result = '';
+
+  for (let index = 0; index < characters.length; index += 1) {
+    const character = characters[index]!;
+    if (character === '\u0640') continue;
+
+    const marks: string[] = [];
+    while (index + 1 < characters.length && /[\u064B-\u0652]/u.test(characters[index + 1]!)) {
+      marks.push(characters[index + 1]!);
+      index += 1;
+    }
+
+    if (character === 'ا' && marks.length === 0) {
+      if (result.endsWith('an')) continue;
+      if (result.endsWith('a')) {
+        result = `${result.slice(0, -1)}ā`;
+        continue;
+      }
+    }
+    if (character === 'ي' && marks.length === 0 && result.endsWith('i')) {
+      result = `${result.slice(0, -1)}ī`;
+      continue;
+    }
+    if (character === 'و' && marks.length === 0 && result.endsWith('u')) {
+      result = `${result.slice(0, -1)}ū`;
+      continue;
+    }
+
+    const doubled = marks.includes('\u0651');
+    const vowel = marks.includes('\u064B')
+      ? 'an'
+      : marks.includes('\u064D')
+        ? 'in'
+        : marks.includes('\u064C')
+          ? 'un'
+          : marks.includes('\u064E')
+            ? 'a'
+            : marks.includes('\u0650')
+              ? 'i'
+                : marks.includes('\u064F')
+                ? 'u'
+                : '';
+    const consonant = character === 'ا' && (vowel === 'a' || (marks.length === 0 && characters[index + 1] === 'ل'))
+      ? 'a'
+      : character === 'ة' && marks.length > 0
+        ? 't'
+        : arabicTransliteration[character] ?? character;
+
+    result += doubled ? consonant + consonant : consonant;
+    result += vowel;
+  }
+
+  return result;
 }

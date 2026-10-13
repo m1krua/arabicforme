@@ -42,8 +42,10 @@ describe('source-aware course data', () => {
       ['lesson-20', 40],
       ['lesson-21', 43],
       ['lesson-22', 46],
+      ['lesson-23', 47],
+      ['lesson-24', 49],
     ]);
-    expect(courseCatalog.words).toHaveLength(426);
+    expect(courseCatalog.words).toHaveLength(447);
     expect(courseCatalog.questions.length).toBeGreaterThanOrEqual(courseCatalog.words.length * 2);
     for (const word of courseCatalog.words) {
       expect(courseCatalog.questions.some((question) =>
@@ -67,8 +69,8 @@ describe('source-aware course data', () => {
         lesson.id,
       ).toBeGreaterThanOrEqual(20);
     }
-    expect(courseCatalog.words.every((word) => word.verified && [2, 3, 4, 5, 6, 9, 11, 13, 16, 19, 20, 24, 26, 28, 30, 33, 35, 38, 40, 41, 43, 46].includes(word.sourcePage))).toBe(true);
-    expect(courseCatalog.questions.every((question) => question.verified && [2, 3, 4, 5, 6, 9, 11, 13, 16, 19, 20, 24, 26, 28, 30, 33, 35, 38, 40, 41, 43, 46].includes(question.sourcePage))).toBe(true);
+    expect(courseCatalog.words.every((word) => word.verified && [2, 3, 4, 5, 6, 9, 11, 13, 16, 19, 20, 24, 26, 28, 30, 33, 35, 38, 40, 41, 43, 46, 47, 49].includes(word.sourcePage))).toBe(true);
+    expect(courseCatalog.questions.every((question) => question.verified && [2, 3, 4, 5, 6, 9, 11, 13, 16, 19, 20, 24, 26, 28, 30, 33, 35, 38, 40, 41, 43, 46, 47, 49].includes(question.sourcePage))).toBe(true);
   });
 
   it('covers every course translation in Kyrgyz and keeps localized quiz choices distinct', () => {
